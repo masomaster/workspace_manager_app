@@ -16,7 +16,7 @@ import argparse
 
 class WorkspaceManager:
     def __init__(self):
-        self.workspace_dir = Path.home() / "Desktop" / "Workspaces"
+        self.workspace_dir = Path.cwd() / "saved_workspaces"
         self.workspace_dir.mkdir(exist_ok=True)
         
     def run_applescript(self, script: str) -> str:
@@ -54,7 +54,7 @@ class WorkspaceManager:
             apps = result.replace('{', '').replace('}', '').split(', ')
             return [app.strip('"') for app in apps if app.strip()]
         return []
-    
+
     def capture_safari_data(self) -> Dict[str, Any]:
         """Capture Safari tabs and window positions"""
         script = '''
@@ -70,21 +70,21 @@ class WorkspaceManager:
                 end repeat
             end if
         end tell
-        
-        -- Convert to string format
+
+        -- Convert to string format safely
         set AppleScript's text item delimiters to "|||"
-        set result to {}
+        set windowResults to {}
         repeat with windowTabs in safariData
             set AppleScript's text item delimiters to ":::"
             set windowString to windowTabs as string
-            set end of result to windowString
+            set end of windowResults to windowString
             set AppleScript's text item delimiters to "|||"
         end repeat
-        set finalResult to result as string
+        set finalResult to windowResults as string
         set AppleScript's text item delimiters to ""
         return finalResult
         '''
-        
+
         result = self.run_applescript(script)
         if result:
             windows = []
