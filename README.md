@@ -36,7 +36,7 @@ To grant these permissions:
 
 ### Command Line Interface
 
-You can use the app directly from the command line:
+You can use the app directly from the command line (from workspace_manager_app/src/):
 
 ```bash
 # Save current workspace

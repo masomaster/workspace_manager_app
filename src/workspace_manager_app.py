@@ -71,18 +71,19 @@ class WorkspaceManager:
             end if
         end tell
         
-        -- Convert to string format
+        # Convert to string format safely
         set AppleScript's text item delimiters to "|||"
-        set result to {}
+        set windowResults to {}
         repeat with windowTabs in safariData
             set AppleScript's text item delimiters to ":::"
             set windowString to windowTabs as string
-            set end of result to windowString
+            set end of windowResults to windowString
             set AppleScript's text item delimiters to "|||"
         end repeat
-        set finalResult to result as string
+        set finalResult to windowResults as string
         set AppleScript's text item delimiters to ""
         return finalResult
+
         '''
         
         result = self.run_applescript(script)
@@ -334,15 +335,15 @@ class WorkspaceManager:
             json.dump(workspace_data, f, indent=2)
         
         print(f"Workspace saved to: {workspace_file}")
-        
+
     def restore_safari(self, app_data: Dict[str, Any]) -> None:
         """Restore Safari with tabs"""
         print("Restoring Safari...")
-        
+
         windows = app_data.get("windows", [])
         if not windows:
             return
-        
+
         # Close existing Safari windows first
         close_script = '''
         tell application "Safari"
@@ -353,12 +354,12 @@ class WorkspaceManager:
         '''
         self.run_applescript(close_script)
         time.sleep(1)
-        
+
         # Open Safari and create windows with tabs
         for i, window_tabs in enumerate(windows):
             if not window_tabs:
                 continue
-                
+
             if i == 0:
                 # First window
                 script = f'''
@@ -367,13 +368,13 @@ class WorkspaceManager:
                     make new document with properties {{URL:"{window_tabs[0]}"}}
                     set currentWindow to front window
                 '''
-                
+
                 # Add additional tabs
                 for tab_url in window_tabs[1:]:
                     script += f'''
                     make new tab at end of tabs of currentWindow with properties {{URL:"{tab_url}"}}
                     '''
-                
+
                 script += '''
                 end tell
                 '''
@@ -384,16 +385,16 @@ class WorkspaceManager:
                     make new document with properties {{URL:"{window_tabs[0]}"}}
                     set currentWindow to front window
                 '''
-                
+
                 for tab_url in window_tabs[1:]:
                     script += f'''
                     make new tab at end of tabs of currentWindow with properties {{URL:"{tab_url}"}}
                     '''
-                
+
                 script += '''
                 end tell
                 '''
-            
+
             self.run_applescript(script)
             time.sleep(2)  # Give time for pages to load
     
