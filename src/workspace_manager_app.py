@@ -85,7 +85,7 @@ class WorkspaceManager:
         return finalResult
 
         '''
-        
+
         result = self.run_applescript(script)
         if result:
             windows = []
@@ -109,26 +109,29 @@ class WorkspaceManager:
         tell application "Microsoft Word"
             if it is running then
                 set docList to {}
-                repeat with doc in documents
-                    if name of doc is not "" then
-                        try
-                            set docPath to full name of doc
-                            set end of docList to (name of doc) & ":::" & docPath
-                        on error
-                            set end of docList to (name of doc) & ":::"
-                        end try
+                set docCount to count of documents
+                if docCount = 0 then return ""
+        
+                repeat with i from 1 to docCount
+                    set doc to document i
+                    if saved of doc is true then
+                        if full name of doc is not "" then
+                            try
+                                set end of docList to (name of doc) & ":::" & (full name of doc)
+                            on error
+                                set end of docList to (name of doc) & ":::"
+                            end try
+                        end if
                     end if
-                end repeat
-                
+                end repeat                
                 set AppleScript's text item delimiters to "|||"
-                set result to docList as string
+                set docResult to docList as string
                 set AppleScript's text item delimiters to ""
-                return result
+                return docResult
             end if
         end tell
-        return ""
         '''
-        
+
         result = self.run_applescript(script)
         if result:
             documents = []
@@ -397,28 +400,81 @@ class WorkspaceManager:
 
             self.run_applescript(script)
             time.sleep(2)  # Give time for pages to load
-    
+
+    def convert_to_posix(self, path):
+        applescript = f'''
+        set posixPath to POSIX path of "{path}"
+        return posixPath
+        '''
+        result = subprocess.run(['osascript', '-e', applescript], capture_output=True, text=True)
+        return result.stdout.strip()
+
+    def is_document_open(self, doc_path):
+        applescript = f'''
+        tell application "Microsoft Word"
+            set docNames to name of every document
+        end tell
+        '''
+        try:
+            result = subprocess.run(['osascript', '-e', applescript], capture_output=True, text=True, check=True)
+            open_docs = result.stdout.split(", ")
+            return any(doc_path.endswith(doc.strip()) for doc in open_docs)
+        except subprocess.CalledProcessError as e:
+            print(f"Error checking if document is open: {e}")
+            return False
+
+    def open_document(self, doc_path):
+        if not os.path.exists(doc_path):
+            print(f"The file does not exist: {doc_path}")
+            return
+
+        if self.is_document_open(doc_path):
+            print(f"Document is already open: {doc_path}")
+            return
+
+        print(f"Opening document: {doc_path}")
+        applescript = f'''
+            try
+                tell application "Microsoft Word"
+                    activate
+                    open POSIX file "{doc_path}"
+                end tell
+            on error errMsg
+                log "Error opening document: " & errMsg
+            end try
+            '''
+        try:
+            subprocess.run(['osascript', '-e', applescript], check=True)
+            time.sleep(1)
+        except subprocess.CalledProcessError as e:
+            print(f"Error opening document: {e}")
+
     def restore_word(self, app_data: Dict[str, Any]) -> None:
         """Restore Word documents"""
         print("Restoring Microsoft Word...")
-        
+
+        self.run_applescript('''
+        tell application "System Events"
+            if not (exists process "Microsoft Word") then
+                tell application "Microsoft Word" to launch
+            end if
+        end tell
+        ''')
+        time.sleep(2)
+        self.run_applescript('tell application "Microsoft Word" to activate')
+        time.sleep(5)
+
         documents = app_data.get("documents", [])
         if not documents:
-            # Just open Word
-            self.run_applescript('tell application "Microsoft Word" to activate')
             return
         
         for doc in documents:
-            if doc.get("path") and os.path.exists(doc["path"]):
-                script = f'''
-                tell application "Microsoft Word"
-                    activate
-                    open "{doc["path"]}"
-                end tell
-                '''
-                self.run_applescript(script)
-                time.sleep(1)
-    
+            applescript_path = doc.get("path")
+            posix_path = self.convert_to_posix(applescript_path)
+
+            if posix_path:
+                self.open_document(posix_path)
+
     def restore_logos(self, app_data: Dict[str, Any]) -> None:
         """Restore Logos Bible Software"""
         print("Restoring Logos...")
