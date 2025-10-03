@@ -14,7 +14,8 @@ class WorkspaceMenuBarApp(rumps.App):
     def __init__(self):
         super(WorkspaceMenuBarApp, self).__init__(
             "Workspaces",
-            title="Workspaces",
+            title=None,
+            icon="./rectangle.grid.2x2.png",
             quit_button=None,
             template=True  # Hide from dock
         )
